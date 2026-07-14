@@ -117,6 +117,10 @@
       <div class="group"><label>אחראי</label><input id="nc_resp"></div>
       <div class="group"><label>הערות</label><input id="nc_notes"></div>
     </div>
+    <div class="row">
+      <div class="group"><label>אימות סגירה</label><input id="nc_verify" placeholder="מי אימת ומתי"></div>
+      <div class="group"><label>רשומה/טופס</label><input id="nc_record" placeholder="טופס קשור"></div>
+    </div>
     <div class="group">
       <label>חתימת המדווח ✍️</label>
       <div class="sig-wrap"><canvas id="nc_sig"></canvas><span class="sig-ph" id="nc_sig_ph">חתום כאן ✍️</span></div>
@@ -148,7 +152,7 @@ var CONTROL_POINTS = {
   "PRP - אחסון בקפוא": {cls:"PRP/OPRP",stage:"אחסון בהקפאה",hazard:"מיקרוביולוגי",limit:"אחסון קפוא ≤ -18°C",verify:"מעקב רישומי טמפ'; בקרת מנהל בטיחות מזון",record:"רישומי טמפ' מקפיא; דוח חריגה"}
 };
 var FS_HEADERS=["תאריך","נקודת בקרה","סיווג","שלב תהליך","סוג סכנה","תיאור האירוע","גבול קריטי / קריטריון","תוצאת ניטור","חריגה","פעולה מתקנת","אחראי","חתימת מדווח","אימות","רשומה/טופס","הערות"];
-var NC_HEADERS=["תאריך","מקור","תחום","תיאור אי-ההתאמה","השפעה / חומרה","פעולה מיידית","פעולה מתקנת","פעולה מונעת","אחראי","חתימת מדווח","סטטוס","הערות"];
+var NC_HEADERS=["תאריך","מקור","תחום","תיאור אי-ההתאמה","השפעה / חומרה","פעולה מיידית","פעולה מתקנת","פעולה מונעת","אחראי","חתימת מדווח","סטטוס","אימות סגירה","רשומה/טופס","הערות"];
 
 var fsRows=[], ncRows=[], tab="fs";
 var sigData={fs:"",nc:""};
@@ -249,13 +253,13 @@ function addFs(){
 function addNc(){
   var desc=$("nc_desc").value.trim();
   if(!desc){flash("מלא תיאור אי-התאמה");return;}
-  var rec={date:$("nc_date").value,source:$("nc_source").value,domain:$("nc_domain").value,desc:desc,impact:$("nc_impact").value,imm:$("nc_imm").value,corr:$("nc_corr").value,prev:$("nc_prev").value,resp:$("nc_resp").value,sig:sigData.nc,status:$("nc_status").value,notes:$("nc_notes").value};
+  var rec={date:$("nc_date").value,source:$("nc_source").value,domain:$("nc_domain").value,desc:desc,impact:$("nc_impact").value,imm:$("nc_imm").value,corr:$("nc_corr").value,prev:$("nc_prev").value,resp:$("nc_resp").value,sig:sigData.nc,status:$("nc_status").value,verify:$("nc_verify").value,record:$("nc_record").value,notes:$("nc_notes").value};
   ncRows.push(rec); localStorage.setItem("haccp_nc",JSON.stringify(ncRows));
-  var vals=[rec.date,rec.source,rec.domain,rec.desc,rec.impact,rec.imm,rec.corr,rec.prev,rec.resp,rec.sig?"נחתם":"לא נחתם",rec.status,rec.notes];
+  var vals=[rec.date,rec.source,rec.domain,rec.desc,rec.impact,rec.imm,rec.corr,rec.prev,rec.resp,rec.sig?"נחתם":"לא נחתם",rec.status,rec.verify,rec.record,rec.notes];
   sendToSheet("nc",NC_HEADERS,vals).then(function(r){
     flash($("sheetUrl").value.trim()?(r.ok?"נשמר ונשלח לגיליון ✓":"נשמר מקומית · שגיאת סנכרון"):"נשמר ✓");
   });
-  $("nc_desc").value="";$("nc_impact").value="";$("nc_imm").value="";$("nc_corr").value="";$("nc_prev").value="";$("nc_resp").value="";$("nc_notes").value="";clearSig("nc");
+  $("nc_desc").value="";$("nc_impact").value="";$("nc_imm").value="";$("nc_corr").value="";$("nc_prev").value="";$("nc_resp").value="";$("nc_verify").value="";$("nc_record").value="";$("nc_notes").value="";clearSig("nc");
   render();
 }
 
@@ -276,7 +280,7 @@ function render(){
 function buildWorkbook(){
   var wb=XLSX.utils.book_new();
   var fsData=fsRows.map(function(r,i){return {"מס'":i+1,"תאריך":r.date,"נקודת בקרה":r.point,"סיווג":r.cls,"שלב תהליך":r.stage,"סוג סכנה":r.hazard,"תיאור האירוע":r.desc,"גבול קריטי":r.limit,"תוצאת ניטור":r.result,"חריגה":r.dev,"פעולה מתקנת":r.corr,"אחראי":r.resp,"חתימה":r.sig?"נחתם":"לא נחתם","אימות":r.verify,"רשומה":r.record,"הערות":r.notes};});
-  var ncData=ncRows.map(function(r,i){return {"מס'":i+1,"תאריך":r.date,"מקור":r.source,"תחום":r.domain,"תיאור":r.desc,"השפעה":r.impact,"פעולה מיידית":r.imm,"פעולה מתקנת":r.corr,"פעולה מונעת":r.prev,"אחראי":r.resp,"חתימה":r.sig?"נחתם":"לא נחתם","סטטוס":r.status,"הערות":r.notes};});
+  var ncData=ncRows.map(function(r,i){return {"מס'":i+1,"תאריך":r.date,"מקור":r.source,"תחום":r.domain,"תיאור":r.desc,"השפעה":r.impact,"פעולה מיידית":r.imm,"פעולה מתקנת":r.corr,"פעולה מונעת":r.prev,"אחראי":r.resp,"חתימה":r.sig?"נחתם":"לא נחתם","סטטוס":r.status,"אימות סגירה":r.verify,"רשומה/טופס":r.record,"הערות":r.notes};});
   var ws1=XLSX.utils.json_to_sheet(fsData.length?fsData:[{}]);
   var ws2=XLSX.utils.json_to_sheet(ncData.length?ncData:[{}]);
   XLSX.utils.book_append_sheet(wb,ws1,"יומן בטיחות מזון");
