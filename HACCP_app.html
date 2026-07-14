@@ -34,6 +34,7 @@
   .btn { width:100%; padding:14px; color:#fff; border:none; border-radius:10px; font-size:16px; font-weight:800; cursor:pointer; }
   .btn-blue { background:#2B6CB0; } .btn-brown { background:#744210; } .btn-navy { background:#1A365D; }
   .btn-drive { background:#0F2A3D; }
+  .btn-sheet { background:#2F855A; }
   .btn:disabled { opacity:.6; }
   .btn-clear { margin-top:8px; background:none; border:1px solid #2B6CB0; color:#2B6CB0; border-radius:8px; padding:6px 16px; font-size:13px; font-weight:700; cursor:pointer; }
   .btn-test { margin-top:10px; background:#2F855A; color:#fff; border:none; border-radius:8px; padding:9px 18px; font-size:13px; font-weight:700; cursor:pointer; }
@@ -60,7 +61,7 @@
   <label>כתובת Google Sheets (Web App URL)</label>
   <input id="sheetUrl" placeholder="https://script.google.com/macros/s/.../exec">
   <div class="status" id="urlStatus"></div>
-  <button class="btn-test" onclick="testConn()">שלח רשומת בדיקה לגיליון</button>
+
 </div>
 
 <div class="tabs">
@@ -125,7 +126,8 @@
   </div>
 
   <div id="recList" style="margin-top:18px"></div>
-  <button class="btn btn-navy" style="margin-top:18px" onclick="exportExcel()">⬇ ייצא הכל ל-Excel</button>
+  <button class="btn btn-sheet" style="margin-top:18px" onclick="testConn()">שלח רשומת בדיקה לגיליון</button>
+  <button class="btn btn-navy" style="margin-top:10px" onclick="exportExcel()">⬇ ייצא הכל ל-Excel</button>
   <button class="btn btn-drive" style="margin-top:10px" onclick="saveToDrive()" id="driveBtn">📁 שמירה לדרייב</button>
   <p style="text-align:center;font-size:11.5px;color:#64748B;margin-top:10px;line-height:1.5">
     הרשומות נשמרות בדפדפן ונשלחות אוטומטית לגיליון Google Sheets.
@@ -136,7 +138,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-var DEFAULT_URL = "https://script.google.com/macros/s/AKfycbxcclnw1-8haLbepKYHmfu7OdWU6HWdsF-wSAWh6NcpfrLTRLhpB16bS5NqUsyueByD-Q/exec";
+var DEFAULT_URL = "https://script.google.com/macros/s/AKfycbwwwkFqsBeaMtPT0Kmv1lIBd8nA8PMNavN0ZE66vM1tBD_4gMBVDYq3A7DIwN-9OJZX/exec";
 
 var CONTROL_POINTS = {
   "CCP 1 - ניפוי קמח": {cls:"CCP",stage:"ניפוי קמח",hazard:"פיזי",limit:"כל הקמח עובר דרך נפה תקינה ושלמה; שק פסולת ריק לחלוטין = ממצא חריג",verify:"אימות שבועי ע\"י משגיח; בדיקת שלמות נפה; סקירת רשומות",record:"טופס CCP ניפוי; טופס בדיקת נפה; טופס חריגה"},
@@ -180,6 +182,7 @@ function switchTab(t){
   $("tabFs").className=t==="fs"?"active":""; $("tabNc").className=t==="nc"?"active":"";
   $("formFs").className="card"+(t==="fs"?"":" hidden");
   $("formNc").className="card"+(t==="nc"?"":" hidden");
+  sizeCanvas(t);
   render();
 }
 function showInfo(){
@@ -190,13 +193,22 @@ function showInfo(){
 }
 
 // signature pads
+function sizeCanvas(pre){
+  var c=$(pre+"_sig");
+  var rect=c.getBoundingClientRect();
+  if(rect.width===0||rect.height===0) return false;
+  var r=window.devicePixelRatio||1;
+  c.width=rect.width*r; c.height=rect.height*r;
+  var ctx=c.getContext("2d");
+  ctx.scale(r,r);
+  ctx.lineWidth=2.5; ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle="#1A202C";
+  return true;
+}
 function initSig(pre){
   var c=$(pre+"_sig"), ctx=c.getContext("2d"), draw=false, lx=0, ly=0;
-  var r=window.devicePixelRatio||1, rect=c.getBoundingClientRect();
-  c.width=rect.width*r; c.height=rect.height*r; ctx.scale(r,r);
-  ctx.lineWidth=2.5; ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle="#1A202C";
+  sizeCanvas(pre);
   function pos(e){var rr=c.getBoundingClientRect();var t=e.touches?e.touches[0]:e;return{x:t.clientX-rr.left,y:t.clientY-rr.top};}
-  function start(e){e.preventDefault();draw=true;var p=pos(e);lx=p.x;ly=p.y;}
+  function start(e){e.preventDefault();if(c.width===0)sizeCanvas(pre);draw=true;var p=pos(e);lx=p.x;ly=p.y;}
   function move(e){if(!draw)return;e.preventDefault();var p=pos(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.stroke();lx=p.x;ly=p.y;$(pre+"_sig_ph").style.display="none";}
   function end(){if(!draw)return;draw=false;sigData[pre]=c.toDataURL("image/png");}
   c.addEventListener("mousedown",start);c.addEventListener("mousemove",move);c.addEventListener("mouseup",end);c.addEventListener("mouseleave",end);
