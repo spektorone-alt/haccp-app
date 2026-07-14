@@ -278,7 +278,7 @@ function exportExcel(){
   flash("הקובץ יוצא ל-Excel ✓");
 }
 
-var DRIVE_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxMtN5oJEj_3fArTRtlfnx_UfOaP6NP9WNzXKvB5D8a05LcXS73zUh7E6ik81_mhEfbLw/exec";
+var DRIVE_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxcclnw1-8haLbepKYHmfu7OdWU6HWdsF-wSAWh6NcpfrLTRLhpB16bS5NqUsyueByD-Q/exec";
 
 function saveToDrive(){
   var btn=$("driveBtn");
@@ -291,7 +291,7 @@ function saveToDrive(){
     base64:base64,
     mimeType:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     filename:built.fileName,
-    folderId:"1ms-C_jhtUkDE6mieTeEws07XDoQI37GP"
+    folderId:"1fk5aGy2eXlVfjv-DmGXeFeI118lIboLz"
   });
   fetch(DRIVE_WEBHOOK_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:payload})
     .then(function(){ flash("הקובץ נשלח לתיקייה בדרייב"); })
