@@ -130,8 +130,12 @@
       <label>תמונה (אופציונלי)</label>
       <div class="photo-wrap">
         <label class="photo-btn">
-          📷 צילום / העלאת תמונה
-          <input type="file" accept="image/*" id="nc_photo_input" style="display:none;">
+          📷 צילום
+          <input type="file" accept="image/*" capture="environment" id="nc_photo_input_camera" style="display:none;">
+        </label>
+        <label class="photo-btn">
+          🖼 בחירה מהגלריה
+          <input type="file" accept="image/*" id="nc_photo_input_gallery" style="display:none;">
         </label>
         <div class="photo-thumb-wrap" id="nc_photo_wrap">
           <button type="button" class="photo-remove" id="nc_photo_remove">×</button>
@@ -232,7 +236,7 @@ function fileToBase64(file){
     reader.readAsDataURL(file);
   });
 }
-$("nc_photo_input").addEventListener("change", function(e){
+function handleNcPhotoSelect(e){
   var file=e.target.files[0];
   if(!file) return;
   fileToBase64(file).then(function(base64){
@@ -240,10 +244,13 @@ $("nc_photo_input").addEventListener("change", function(e){
     $("nc_photo_preview").src="data:"+ncPhotoData.mimeType+";base64,"+base64;
     $("nc_photo_wrap").style.display="inline-block";
   });
-});
+}
+$("nc_photo_input_camera").addEventListener("change", handleNcPhotoSelect);
+$("nc_photo_input_gallery").addEventListener("change", handleNcPhotoSelect);
 $("nc_photo_remove").addEventListener("click", function(){
   ncPhotoData={base64:"",mimeType:"",fileName:""};
-  $("nc_photo_input").value="";
+  $("nc_photo_input_camera").value="";
+  $("nc_photo_input_gallery").value="";
   $("nc_photo_wrap").style.display="none";
 });
 
@@ -285,7 +292,7 @@ function addNc(){
     flash($("sheetUrl").value.trim()?(r.ok?"נשמר ונשלח לגיליון ✓":"נשמר מקומית · שגיאת סנכרון"):"נשמר ✓");
   });
   $("nc_desc").value="";$("nc_impact").value="";$("nc_imm").value="";$("nc_corr").value="";$("nc_prev").value="";$("nc_resp").value="";$("nc_notes").value="";clearSig("nc");
-  ncPhotoData={base64:"",mimeType:"",fileName:""};$("nc_photo_input").value="";$("nc_photo_wrap").style.display="none";
+  ncPhotoData={base64:"",mimeType:"",fileName:""};$("nc_photo_input_camera").value="";$("nc_photo_input_gallery").value="";$("nc_photo_wrap").style.display="none";
   render();
 }
 
