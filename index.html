@@ -34,9 +34,13 @@
   .btn { width:100%; padding:14px; color:#fff; border:none; border-radius:10px; font-size:16px; font-weight:800; cursor:pointer; }
   .btn-blue { background:#2B6CB0; } .btn-brown { background:#744210; } .btn-navy { background:#1A365D; }
   .btn-drive { background:#0F2A3D; }
-  .btn-sheet { background:#2F855A; }
   .btn:disabled { opacity:.6; }
   .btn-clear { margin-top:8px; background:none; border:1px solid #2B6CB0; color:#2B6CB0; border-radius:8px; padding:6px 16px; font-size:13px; font-weight:700; cursor:pointer; }
+  .photo-wrap{ display:flex; align-items:center; gap:12px; margin-top:6px; flex-wrap:wrap; }
+  .photo-btn{ border:1.5px dashed #744210; border-radius:10px; background:#FFFBEB; color:#744210; padding:10px 16px; font-size:14px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+  .photo-thumb-wrap{ position:relative; display:none; }
+  .photo-thumb{ max-width:110px; max-height:110px; border-radius:8px; border:1px solid #E2C88C; }
+  .photo-remove{ position:absolute; top:-8px; left:-8px; background:#A8171C; color:#fff; border:none; border-radius:50%; width:24px; height:24px; font-weight:700; cursor:pointer; line-height:1; }
   .btn-test { margin-top:10px; background:#2F855A; color:#fff; border:none; border-radius:8px; padding:9px 18px; font-size:13px; font-weight:700; cursor:pointer; }
   .rec { background:#fff; border:1px solid #D8E0EA; border-radius:10px; padding:11px 13px; margin-bottom:8px; }
   .rec .t { font-weight:700; color:#1A365D; font-size:14px; }
@@ -61,7 +65,7 @@
   <label>כתובת Google Sheets (Web App URL)</label>
   <input id="sheetUrl" placeholder="https://script.google.com/macros/s/.../exec">
   <div class="status" id="urlStatus"></div>
-
+  <button class="btn-test" onclick="testConn()">שלח רשומת בדיקה לגיליון</button>
 </div>
 
 <div class="tabs">
@@ -117,14 +121,23 @@
       <div class="group"><label>אחראי</label><input id="nc_resp"></div>
       <div class="group"><label>הערות</label><input id="nc_notes"></div>
     </div>
-    <div class="row">
-      <div class="group"><label>אימות סגירה</label><input id="nc_verify" placeholder="מי אימת ומתי"></div>
-      <div class="group"><label>רשומה/טופס</label><input id="nc_record" placeholder="טופס קשור"></div>
-    </div>
     <div class="group">
       <label>חתימת המדווח ✍️</label>
       <div class="sig-wrap"><canvas id="nc_sig"></canvas><span class="sig-ph" id="nc_sig_ph">חתום כאן ✍️</span></div>
       <button class="btn-clear" onclick="clearSig('nc')">נקה חתימה</button>
+    </div>
+    <div class="group">
+      <label>תמונה (אופציונלי)</label>
+      <div class="photo-wrap">
+        <label class="photo-btn">
+          📷 צילום / העלאת תמונה
+          <input type="file" accept="image/*" capture="environment" id="nc_photo_input" style="display:none;">
+        </label>
+        <div class="photo-thumb-wrap" id="nc_photo_wrap">
+          <button type="button" class="photo-remove" id="nc_photo_remove">×</button>
+          <img class="photo-thumb" id="nc_photo_preview" alt="תמונה">
+        </div>
+      </div>
     </div>
     <button class="btn btn-brown" onclick="addNc()">הוסף רשומה</button>
   </div>
@@ -141,7 +154,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-var DEFAULT_URL = "https://script.google.com/macros/s/AKfycbwmKaBal0PU7hrmGYwQ54226yWti4zDPpOnQfrHsOufi0NpSkUaeVKuZEC6jvw2XIorHQ/exec";
+var DEFAULT_URL = "https://script.google.com/macros/s/AKfycbzWIY6W1rEPj_YaAyLV55nH4Kgn_wHFIA60q3eGJHGsP2CS6Gkw3ci6RB2uh9jvlaVEWw/exec";
 
 var CONTROL_POINTS = {
   "CCP 1 - ניפוי קמח": {cls:"CCP",stage:"ניפוי קמח",hazard:"פיזי",limit:"כל הקמח עובר דרך נפה תקינה ושלמה; שק פסולת ריק לחלוטין = ממצא חריג",verify:"אימות שבועי ע\"י משגיח; בדיקת שלמות נפה; סקירת רשומות",record:"טופס CCP ניפוי; טופס בדיקת נפה; טופס חריגה"},
@@ -151,10 +164,11 @@ var CONTROL_POINTS = {
   "PRP - אחסון בקפוא": {cls:"PRP/OPRP",stage:"אחסון בהקפאה",hazard:"מיקרוביולוגי",limit:"אחסון קפוא ≤ -18°C",verify:"מעקב רישומי טמפ'; בקרת מנהל בטיחות מזון",record:"רישומי טמפ' מקפיא; דוח חריגה"}
 };
 var FS_HEADERS=["תאריך","נקודת בקרה","סיווג","שלב תהליך","סוג סכנה","תיאור האירוע","גבול קריטי / קריטריון","תוצאת ניטור","חריגה","פעולה מתקנת","אחראי","חתימת מדווח","אימות","רשומה/טופס","הערות"];
-var NC_HEADERS=["תאריך","מקור","תחום","תיאור אי-ההתאמה","השפעה / חומרה","פעולה מיידית","פעולה מתקנת","פעולה מונעת","אחראי","חתימת מדווח","סטטוס","אימות סגירה","רשומה/טופס","הערות"];
+var NC_HEADERS=["תאריך","מקור","תחום","תיאור אי-ההתאמה","השפעה / חומרה","פעולה מיידית","פעולה מתקנת","פעולה מונעת","אחראי","חתימת מדווח","סטטוס","הערות"];
 
 var fsRows=[], ncRows=[], tab="fs";
 var sigData={fs:"",nc:""};
+var ncPhotoData={base64:"",mimeType:"",fileName:""};
 
 function today(){return new Date().toISOString().slice(0,10);}
 function $(id){return document.getElementById(id);}
@@ -185,7 +199,6 @@ function switchTab(t){
   $("tabFs").className=t==="fs"?"active":""; $("tabNc").className=t==="nc"?"active":"";
   $("formFs").className="card"+(t==="fs"?"":" hidden");
   $("formNc").className="card"+(t==="nc"?"":" hidden");
-  sizeCanvas(t);
   render();
 }
 function showInfo(){
@@ -196,22 +209,13 @@ function showInfo(){
 }
 
 // signature pads
-function sizeCanvas(pre){
-  var c=$(pre+"_sig");
-  var rect=c.getBoundingClientRect();
-  if(rect.width===0||rect.height===0) return false;
-  var r=window.devicePixelRatio||1;
-  c.width=rect.width*r; c.height=rect.height*r;
-  var ctx=c.getContext("2d");
-  ctx.scale(r,r);
-  ctx.lineWidth=2.5; ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle="#1A202C";
-  return true;
-}
 function initSig(pre){
   var c=$(pre+"_sig"), ctx=c.getContext("2d"), draw=false, lx=0, ly=0;
-  sizeCanvas(pre);
+  var r=window.devicePixelRatio||1, rect=c.getBoundingClientRect();
+  c.width=rect.width*r; c.height=rect.height*r; ctx.scale(r,r);
+  ctx.lineWidth=2.5; ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle="#1A202C";
   function pos(e){var rr=c.getBoundingClientRect();var t=e.touches?e.touches[0]:e;return{x:t.clientX-rr.left,y:t.clientY-rr.top};}
-  function start(e){e.preventDefault();if(c.width===0)sizeCanvas(pre);draw=true;var p=pos(e);lx=p.x;ly=p.y;}
+  function start(e){e.preventDefault();draw=true;var p=pos(e);lx=p.x;ly=p.y;}
   function move(e){if(!draw)return;e.preventDefault();var p=pos(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.stroke();lx=p.x;ly=p.y;$(pre+"_sig_ph").style.display="none";}
   function end(){if(!draw)return;draw=false;sigData[pre]=c.toDataURL("image/png");}
   c.addEventListener("mousedown",start);c.addEventListener("mousemove",move);c.addEventListener("mouseup",end);c.addEventListener("mouseleave",end);
@@ -220,6 +224,28 @@ function initSig(pre){
 function clearSig(pre){
   var c=$(pre+"_sig"),ctx=c.getContext("2d");ctx.clearRect(0,0,c.width,c.height);sigData[pre]="";$(pre+"_sig_ph").style.display="block";
 }
+function fileToBase64(file){
+  return new Promise(function(resolve,reject){
+    var reader=new FileReader();
+    reader.onload=function(){resolve(reader.result.split(",")[1]);};
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+$("nc_photo_input").addEventListener("change", function(e){
+  var file=e.target.files[0];
+  if(!file) return;
+  fileToBase64(file).then(function(base64){
+    ncPhotoData={base64:base64, mimeType:file.type||"image/jpeg", fileName:file.name||"photo.jpg"};
+    $("nc_photo_preview").src="data:"+ncPhotoData.mimeType+";base64,"+base64;
+    $("nc_photo_wrap").style.display="inline-block";
+  });
+});
+$("nc_photo_remove").addEventListener("click", function(){
+  ncPhotoData={base64:"",mimeType:"",fileName:""};
+  $("nc_photo_input").value="";
+  $("nc_photo_wrap").style.display="none";
+});
 
 // send to Google Sheets
 function sendToSheet(type,headers,values){
@@ -252,13 +278,14 @@ function addFs(){
 function addNc(){
   var desc=$("nc_desc").value.trim();
   if(!desc){flash("מלא תיאור אי-התאמה");return;}
-  var rec={date:$("nc_date").value,source:$("nc_source").value,domain:$("nc_domain").value,desc:desc,impact:$("nc_impact").value,imm:$("nc_imm").value,corr:$("nc_corr").value,prev:$("nc_prev").value,resp:$("nc_resp").value,sig:sigData.nc,status:$("nc_status").value,verify:$("nc_verify").value,record:$("nc_record").value,notes:$("nc_notes").value};
+  var rec={date:$("nc_date").value,source:$("nc_source").value,domain:$("nc_domain").value,desc:desc,impact:$("nc_impact").value,imm:$("nc_imm").value,corr:$("nc_corr").value,prev:$("nc_prev").value,resp:$("nc_resp").value,sig:sigData.nc,status:$("nc_status").value,notes:$("nc_notes").value,photo:ncPhotoData.base64?("data:"+ncPhotoData.mimeType+";base64,"+ncPhotoData.base64):"",photoMime:ncPhotoData.mimeType,photoName:ncPhotoData.fileName};
   ncRows.push(rec); localStorage.setItem("haccp_nc",JSON.stringify(ncRows));
-  var vals=[rec.date,rec.source,rec.domain,rec.desc,rec.impact,rec.imm,rec.corr,rec.prev,rec.resp,rec.sig?"נחתם":"לא נחתם",rec.status,rec.verify,rec.record,rec.notes];
+  var vals=[rec.date,rec.source,rec.domain,rec.desc,rec.impact,rec.imm,rec.corr,rec.prev,rec.resp,rec.sig?"נחתם":"לא נחתם",rec.status,rec.notes];
   sendToSheet("nc",NC_HEADERS,vals).then(function(r){
     flash($("sheetUrl").value.trim()?(r.ok?"נשמר ונשלח לגיליון ✓":"נשמר מקומית · שגיאת סנכרון"):"נשמר ✓");
   });
-  $("nc_desc").value="";$("nc_impact").value="";$("nc_imm").value="";$("nc_corr").value="";$("nc_prev").value="";$("nc_resp").value="";$("nc_verify").value="";$("nc_record").value="";$("nc_notes").value="";clearSig("nc");
+  $("nc_desc").value="";$("nc_impact").value="";$("nc_imm").value="";$("nc_corr").value="";$("nc_prev").value="";$("nc_resp").value="";$("nc_notes").value="";clearSig("nc");
+  ncPhotoData={base64:"",mimeType:"",fileName:""};$("nc_photo_input").value="";$("nc_photo_wrap").style.display="none";
   render();
 }
 
@@ -270,7 +297,7 @@ function render(){
       var r=rows[i], title, dev="";
       if(tab==="fs"){title=r.point; if(r.dev==="כן")dev='<span class="badge">חריגה</span>';}
       else{title=r.source+" · "+r.domain;}
-      html+='<div class="rec"><div class="t">#'+(i+1)+' · '+title+dev+'</div><div class="d">'+r.date+' · '+(r.desc||"").slice(0,60)+'</div>'+(r.sig?'<img src="'+r.sig+'">':'')+'</div>';
+      html+='<div class="rec"><div class="t">#'+(i+1)+' · '+title+dev+'</div><div class="d">'+r.date+' · '+(r.desc||"").slice(0,60)+'</div>'+(r.sig?'<img src="'+r.sig+'">':'')+(r.photo?'<img src="'+r.photo+'" style="max-width:90px;max-height:90px;border-radius:8px;margin-inline-start:8px">':'')+'</div>';
     }
   }
   $("recList").innerHTML=html;
@@ -279,7 +306,7 @@ function render(){
 function buildWorkbook(){
   var wb=XLSX.utils.book_new();
   var fsData=fsRows.map(function(r,i){return {"מס'":i+1,"תאריך":r.date,"נקודת בקרה":r.point,"סיווג":r.cls,"שלב תהליך":r.stage,"סוג סכנה":r.hazard,"תיאור האירוע":r.desc,"גבול קריטי":r.limit,"תוצאת ניטור":r.result,"חריגה":r.dev,"פעולה מתקנת":r.corr,"אחראי":r.resp,"חתימה":r.sig?"נחתם":"לא נחתם","אימות":r.verify,"רשומה":r.record,"הערות":r.notes};});
-  var ncData=ncRows.map(function(r,i){return {"מס'":i+1,"תאריך":r.date,"מקור":r.source,"תחום":r.domain,"תיאור":r.desc,"השפעה":r.impact,"פעולה מיידית":r.imm,"פעולה מתקנת":r.corr,"פעולה מונעת":r.prev,"אחראי":r.resp,"חתימה":r.sig?"נחתם":"לא נחתם","סטטוס":r.status,"אימות סגירה":r.verify,"רשומה/טופס":r.record,"הערות":r.notes};});
+  var ncData=ncRows.map(function(r,i){return {"מס'":i+1,"תאריך":r.date,"מקור":r.source,"תחום":r.domain,"תיאור":r.desc,"השפעה":r.impact,"פעולה מיידית":r.imm,"פעולה מתקנת":r.corr,"פעולה מונעת":r.prev,"אחראי":r.resp,"חתימה":r.sig?"נחתם":"לא נחתם","סטטוס":r.status,"הערות":r.notes};});
   var ws1=XLSX.utils.json_to_sheet(fsData.length?fsData:[{}]);
   var ws2=XLSX.utils.json_to_sheet(ncData.length?ncData:[{}]);
   XLSX.utils.book_append_sheet(wb,ws1,"יומן בטיחות מזון");
@@ -293,23 +320,34 @@ function exportExcel(){
   flash("הקובץ יוצא ל-Excel ✓");
 }
 
-var DRIVE_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxVwVroBWIMEbV4d12nh_3C6CQsXFjZA2JqUNAnn7c_bPMB58nijph3j1hiRI5oygex/exec";
+var DRIVE_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxMtN5oJEj_3fArTRtlfnx_UfOaP6NP9WNzXKvB5D8a05LcXS73zUh7E6ik81_mhEfbLw/exec";
 
 function saveToDrive(){
   var btn=$("driveBtn");
   btn.disabled=true;
   var originalText=btn.textContent;
   btn.textContent="שולח לדרייב...";
+  var HACCP_FOLDER_ID="1ms-C_jhtUkDE6mieTeEws07XDoQI37GP";
   var built=buildWorkbook();
   var base64=XLSX.write(built.wb,{bookType:"xlsx",type:"base64"});
   var payload=JSON.stringify({
     base64:base64,
     mimeType:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     filename:built.fileName,
-    folderId:"1fk5aGy2eXlVfjv-DmGXeFeI118lIboLz"
+    folderId:HACCP_FOLDER_ID
   });
-  fetch(DRIVE_WEBHOOK_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:payload})
-    .then(function(){ flash("הקובץ נשלח לתיקייה בדרייב"); })
+  var photoRows=ncRows.map(function(r,i){return {r:r,i:i};}).filter(function(x){return x.r.photo;});
+  var photoUploads=photoRows.map(function(x){
+    var b64=x.r.photo.split(",")[1];
+    var ext=(x.r.photoName||"").match(/\.[^.]+$/);
+    ext=ext?ext[0]:".jpg";
+    var fname="אי_התאמה_"+(x.r.date||"ללא_תאריך")+"_"+(x.i+1)+ext;
+    return fetch(DRIVE_WEBHOOK_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({
+      base64:b64, mimeType:x.r.photoMime||"image/jpeg", filename:fname, folderId:HACCP_FOLDER_ID
+    })});
+  });
+  Promise.all([fetch(DRIVE_WEBHOOK_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:payload})].concat(photoUploads))
+    .then(function(){ flash(photoUploads.length?"הקובץ והתמונות נשלחו לדרייב":"הקובץ נשלח לתיקייה בדרייב"); })
     .catch(function(){ flash("שגיאה בשליחה לדרייב — נסו שוב"); })
     .finally(function(){ btn.disabled=false; btn.textContent=originalText; });
 }
